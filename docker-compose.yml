@@ -1,0 +1,16 @@
+
+services:
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Go run (development):
+    command: go run . -c simon.example.yml -i 1
+    # Already compiled (production):
+    #command: ./simon -c simon.example.yml -i 15
+    volumes:
+      - .:/app
+    ports:
+      - '${FORWARD_APP_PORT:-8000}:8000'
+    restart: unless-stopped

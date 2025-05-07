@@ -1,0 +1,14 @@
+# IDEs
+.idea/
+.vscode/
+
+# Built Binaries
+simon
+simon.exe
+
+# Test Config
+simon.yml
+simon.yaml
+
+# Others
+.DS_Store

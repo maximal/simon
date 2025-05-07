@@ -1,0 +1,91 @@
+####
+# SiMon example config.
+#
+# @date 2024-11-07
+# @time 14:44:10+03:00
+#
+# @link https://github.com/maximal/simon
+# @link https://maximals.ru
+# @link https://sijeko.ru
+####
+
+# This machine name, for measurements tag `host`
+# It will be added to every measurement
+# If `null`, will be taken from `/etc/hostname` file
+hostname: example
+
+# Working mode: `push` (send metrics, default), `server` (print metrics on HTTP requests)
+mode: push
+
+# Web server settings (for `server` mode only)
+server:
+  # Port to listen to
+  port: 8000
+  # Host to listen to; default, empty string, means all addresses on all interfaces
+  #host: ""
+  # `Aurhorization` HTTP header to check before showing metrics;
+  # Any random string; if empty, metrics will be shown without authorization
+  #authorization: ""
+
+# InfluxDB settings
+influx:
+  # Whether to send data to Influx; disabled by default, console output only
+  #enabled: true
+  # Influx host name, required if Influx enabled
+  # HTTP installation example, with port: influx.host.org:8086
+  # HTTPS installation example: https://influx.host.org
+  host: localhost:8086
+  # Influx API token, required if Influx enabled
+  token: TOKEN REQUIRED
+  # Influx org name, required if Influx enabled
+  org: Sijeko
+  # Influx bucket name, required if Influx enabled
+  bucket: simon_metrics
+  # Timestamps precision: `s` (default), `ms`, `μs`/`us`, `ns`
+  # It is recommended not to use `ms`, `μs`, or `ns`
+  # if the monitoring interval is greater than `1`
+  precision: s
+  # Additional tags to be added to every measurement; key:value pairs
+  tags:
+    #custom1: value1
+    #custom2: value2
+
+# Whether to track system uptime; enabled by default
+uptime: true
+
+# Whether to track CPU usage; enabled by default
+cpu: true
+
+# Whether to track memory usage; enabled by default
+memory: true
+
+disk:
+  # Whether to track disks usage; enabled by default
+  enabled: true
+  # Mount points to track; default, empty array, means all
+  mounts:
+    - /
+    #- /tmp
+
+io:
+  # Whether to track I/O usage; enabled by default
+  enabled: true
+  # I/O devices to track; default, empty array, means all
+  devices:
+    #- vda
+    #- vda1
+
+network:
+  # Whether to track network interfaces usage; enabled by default
+  enabled: true
+  # Network interfaces to track; default, empty array, means all
+  interfaces:
+    #- lo
+    #- eth0
+    #- tunl0
+
+# Whether to track monitor’s own metrics; enabled by default
+monitor: true
+
+# Whether to print metrics to stdout; disabled by default, set true to enable
+#print: true

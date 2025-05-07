@@ -1,0 +1,317 @@
+/**
+ * InfuxDB v2 client
+ *
+ * Copyright © 2024-2025 MaximAL
+ *
+ */
+
+package influx
+
+import (
+	"bytes"
+	"io"
+	"net/http"
+	"net/url"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+type InfluxConfig struct {
+	Enabled   bool
+	Host      string
+	Token     string
+	Org       string
+	Bucket    string
+	Precision string
+	Tags      map[string]string
+}
+
+type FieldType uint8
+
+const (
+	TypeFloat  FieldType = 1
+	TypeInt    FieldType = 2
+	TypeUint   FieldType = 3
+	TypeString FieldType = 4
+	TypeBool   FieldType = 5
+)
+
+type Field struct {
+	Name        string
+	Type        FieldType
+	Value       any
+	FloatValue  float64
+	IntValue    int64
+	UintValue   uint64
+	StringValue string
+	BoolValue   bool
+}
+
+type Metric struct {
+	Name      string
+	Fields    []Field
+	Tags      map[string]string
+	Comment   string
+	Timestamp uint64
+}
+
+var commonTags map[string]string = map[string]string{}
+var metrics []Metric = []Metric{}
+
+func SetCommonTags(tags map[string]string) {
+	commonTags = tags
+}
+
+func ResetMetrics() {
+	metrics = metrics[:0]
+}
+
+func AddMetric(name string, fields []Field, tags map[string]string, comment string) {
+	if name == "" {
+		// Error
+	}
+	if len(fields) == 0 {
+		// Error
+	}
+	metrics = append(metrics, Metric{
+		Name:    name,
+		Fields:  fields,
+		Tags:    tags,
+		Comment: comment,
+	})
+}
+
+func AddValueMetric(name string, value any, tags map[string]string, comment string) {
+	// Type assertion
+	switch value := value.(type) {
+	default:
+		// fmt.Printf("unexpected type %T\n", t) // %T prints whatever type t has
+		panic("Unexpected type; must be one of: float64, int64, uint64, string, bool")
+	case float64:
+		AddFloatMetric(name, value, tags, comment)
+	case int64:
+		AddIntMetric(name, value, tags, comment)
+	case uint64:
+		AddUintMetric(name, value, tags, comment)
+	case string:
+		AddStringMetric(name, value, tags, comment)
+	case bool:
+		AddBoolMetric(name, value, tags, comment)
+	}
+}
+
+func AddFloatMetric(name string, value float64, tags map[string]string, comment string) {
+	metrics = append(metrics, Metric{
+		Name:    name,
+		Fields:  []Field{{Name: "value", Type: TypeFloat, FloatValue: value}},
+		Tags:    tags,
+		Comment: comment,
+	})
+}
+
+func AddIntMetric(name string, value int64, tags map[string]string, comment string) {
+	metrics = append(metrics, Metric{
+		Name:    name,
+		Fields:  []Field{{Name: "value", Type: TypeInt, IntValue: value}},
+		Tags:    tags,
+		Comment: comment,
+	})
+}
+
+func AddUintMetric(name string, value uint64, tags map[string]string, comment string) {
+	metrics = append(metrics, Metric{
+		Name:    name,
+		Fields:  []Field{{Name: "value", Type: TypeUint, UintValue: value}},
+		Tags:    tags,
+		Comment: comment,
+	})
+}
+
+func AddStringMetric(name string, value string, tags map[string]string, comment string) {
+	metrics = append(metrics, Metric{
+		Name:    name,
+		Fields:  []Field{{Name: "value", Type: TypeString, StringValue: value}},
+		Tags:    tags,
+		Comment: comment,
+	})
+}
+
+func AddBoolMetric(name string, value bool, tags map[string]string, comment string) {
+	metrics = append(metrics, Metric{
+		Name:    name,
+		Fields:  []Field{{Name: "value", Type: TypeBool, BoolValue: value}},
+		Tags:    tags,
+		Comment: comment,
+	})
+}
+
+func GetMetricsText() string {
+	count := GetMetricsCount()
+	if count == 0 {
+		return ""
+	}
+
+	lines := []string{"## metrics start: " + strconv.FormatUint(count, 10)}
+
+	for _, metric := range metrics {
+		// Sort tags for better performance on InfluxDB side:
+		// https://docs.influxdata.com/influxdb/v2/write-data/best-practices/optimize-writes/#sort-tags-by-key
+		tagKeys := []string{}
+		for key := range commonTags {
+			if _, exists := metric.Tags[key]; exists {
+				continue
+			}
+			tagKeys = append(tagKeys, key)
+		}
+		for key := range metric.Tags {
+			tagKeys = append(tagKeys, key)
+		}
+		sort.Strings(tagKeys)
+		var tags []string = []string{escapeMetricName(metric.Name)}
+		for _, key := range tagKeys {
+			if _, exists := metric.Tags[key]; exists {
+				tags = append(tags, escapeKey(key)+"="+escapeTagValue(metric.Tags[key]))
+			} else {
+				tags = append(tags, escapeKey(key)+"="+escapeTagValue(commonTags[key]))
+			}
+		}
+
+		// Format values to match field types
+		var values []string = []string{}
+		for _, field := range metric.Fields {
+			var escaped string
+			switch field.Type {
+			case TypeFloat:
+				escaped = strconv.FormatFloat(field.FloatValue, 'f', -1, 64)
+			case TypeInt:
+				escaped = strconv.FormatInt(field.IntValue, 10) + "i"
+			case TypeUint:
+				escaped = strconv.FormatUint(field.UintValue, 10) + "u"
+			case TypeString:
+				escaped = "\"" + escapeStringFieldValue(field.StringValue) + "\""
+			case TypeBool:
+				escaped = strconv.FormatBool(field.BoolValue)
+			}
+			values = append(values, escapeKey(field.Name)+"="+escaped)
+		}
+
+		parts := []string{
+			strings.Join(tags, ","),
+			strings.Join(values, ","),
+		}
+
+		// Measurement timestamp
+		if metric.Timestamp > 0 {
+			parts = append(parts, strconv.FormatUint(metric.Timestamp, 10))
+		}
+
+		// Measurement comment
+		if metric.Comment != "" {
+			lines = append(lines, "# "+strings.ReplaceAll(metric.Comment, "\n", " "))
+		}
+
+		// Measurement line: name, tags, fields/values
+		lines = append(lines, strings.Join(parts, "    "))
+	}
+
+	lines = append(lines, "## metrics end")
+	return strings.Join(lines, "\n")
+}
+
+func GetMetricsCount() uint64 {
+	return uint64(len(metrics))
+}
+
+// Escape a metric/measurement name
+//
+// https://docs.influxdata.com/influxdb/v2/reference/syntax/line-protocol/#special-characters
+func escapeMetricName(name string) string {
+	return strings.ReplaceAll(
+		strings.ReplaceAll(name, ",", "\\,"),
+		" ",
+		"\\ ",
+	)
+}
+
+// Escape a tag’s or field’s key
+//
+// https://docs.influxdata.com/influxdb/v2/reference/syntax/line-protocol/#special-characters
+func escapeKey(key string) string {
+	return strings.ReplaceAll(
+		strings.ReplaceAll(
+			strings.ReplaceAll(key, ",", "\\,"),
+			"=",
+			"\\=",
+		),
+		" ",
+		"\\ ",
+	)
+}
+
+// Escape a tag’s value
+//
+// https://docs.influxdata.com/influxdb/v2/reference/syntax/line-protocol/#special-characters
+func escapeTagValue(value string) string {
+	return escapeKey(value)
+}
+
+// Escape a string field’s value
+//
+// https://docs.influxdata.com/influxdb/v2/reference/syntax/line-protocol/#special-characters
+func escapeStringFieldValue(value string) string {
+	return strings.ReplaceAll(
+		strings.ReplaceAll(value, "\"", "\\\""),
+		"\\",
+		"\\\\",
+	)
+}
+
+func SendMetrics(config InfluxConfig) bool {
+	return SendText(GetMetricsText(), config)
+}
+
+func SendText(text string, config InfluxConfig) bool {
+
+	var host string
+	if strings.HasPrefix(config.Host, "https://") || strings.HasPrefix(config.Host, "http://") {
+		host = config.Host
+	} else {
+		host = "http://" + config.Host
+	}
+
+	params := url.Values{}
+	params.Add("org", config.Org)
+	params.Add("bucket", config.Bucket)
+	params.Add("precision", config.Precision)
+
+	request, err := http.NewRequest(
+		"POST",
+		host+"/api/v2/write?"+params.Encode(),
+		bytes.NewBuffer([]byte(text)),
+	)
+	if err != nil {
+		println(err)
+		return false
+	}
+	request.Header.Set("Authorization", "Token "+config.Token)
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		//panic(err)
+		println(err)
+		return false
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode < 200 || response.StatusCode > 299 {
+		println("HTTP", response.Status)
+		//println("Response headers:", response.Header)
+		body, _ := io.ReadAll(response.Body)
+		println("Response Body:", string(body))
+		return false
+	}
+
+	return true
+}
