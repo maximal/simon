@@ -21,6 +21,10 @@ Help and testing on other distributions and architectures is highly appreciated.
 Ported from the original PHP version: https://github.com/maximal/simon-php
 
 
+## Grafana Dashboard Example
+![Grafana Dashboard](grafana-dashboard.png)
+
+
 ## Usage
 Get the sources:
 ```shell
@@ -335,10 +339,6 @@ monitor_memory_gc_count,host=hostname                  value=[uint]
 monitor_metrics_sent_time,host=hostname                value=[float]
 ## metrics end
 ```
-
-
-## Grafana Dashboard for SiMon’s metrics
-... ... To be continued ... ...
 
 
 ## Author
