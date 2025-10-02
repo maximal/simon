@@ -107,6 +107,7 @@ StartLimitBurst=4
 [Service]
 #ExecStart=/path/to/simon/simon -c /path/to/simon/config.yml -i 15
 ExecStart=%s -c '%s' -i 15
+ExecReload=/bin/kill -SIGHUP "$MAINPID"
 Restart=on-failure
 RestartSec=1
 # Do not restart on the following exit codes (won’t be successful):
