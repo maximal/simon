@@ -31,6 +31,8 @@ server:
 influx:
   # Whether to send data to Influx; disabled by default, console output only
   #enabled: true
+  # InfluxDB version: 2 or 3
+  version: 3
   # Influx host name, required if Influx enabled
   # HTTP installation example, with port: influx.host.org:8086
   # HTTPS installation example: https://influx.host.org

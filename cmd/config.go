@@ -64,7 +64,7 @@ func getMounts() string {
 		return "#- /"
 	}
 	result := []string{}
-	for _, line := range strings.Split(string(stdout), "\n") {
+	for line := range strings.SplitSeq(string(stdout), "\n") {
 		parts := strings.Fields(line)
 		if len(parts) != 6 {
 			continue
@@ -86,7 +86,7 @@ func getIoDevices() string {
 		return "#- vda\n    #- vda1\n    #- vdb"
 	}
 	result := []string{}
-	for _, line := range strings.Split(string(contents), "\n") {
+	for line := range strings.SplitSeq(string(contents), "\n") {
 		parts := strings.Fields(line)
 		if len(parts) < 14 {
 			continue
@@ -119,7 +119,7 @@ func getNetworkInterfaces() string {
 		return "#- lo\n    #- eth0"
 	}
 	result := []string{}
-	for _, line := range strings.Split(string(contents), "\n") {
+	for line := range strings.SplitSeq(string(contents), "\n") {
 		parts := strings.Fields(line)
 		if len(parts) != 17 {
 			continue

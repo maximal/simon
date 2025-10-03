@@ -162,6 +162,8 @@ server:
 influx:
   # Whether to send data to Influx; disabled by default, console output only
   enabled: true
+  # InfluxDB version: 2 or 3
+  version: 3
   # Influx host name, required if Influx enabled
   # HTTP installation example, with port: influx.host.org:8086
   # HTTPS installation example: https://influx.host.org
@@ -287,7 +289,7 @@ disk_total,host=hostname,disk=/dev/vda1,mount=/        value=[uint]
 disk_used,host=hostname,disk=/dev/vda1,mount=/         value=[uint]
 # Disk available, bytes
 disk_available,host=hostname,disk=/dev/vda1,mount=/    value=[uint]
-# Disk usage; 100% * disk_used / disk_total
+# Disk usage; 100% * disk_used / (disk_used + disk_available)
 disk_usage,host=hostname,disk=/dev/vda1,mount=/        value=[float]
 
 #### IO metrics, for each monitored device ####
@@ -309,7 +311,7 @@ io_read_usage,host=hostname,device=vda1                value=[float]
 io_usage,host=hostname,device=vda1                     value=[float]
 
 # Most used I/O device (with maximum I/O usage)
-io_usage_max,host=hostname,device=vda                  value=[float],device="vda"
+io_usage_max,host=hostname,device=vda                  value=[float],device_name="vda"
 
 #### Network metrics, for each monitored interface ####
 # Received traffic, bytes
@@ -322,9 +324,9 @@ network_load_in,host=hostname,interface=eth0           value=[uint]
 network_load_out,host=hostname,interface=eth0          value=[uint]
 
 # Most loaded device (with maximum receiving load)
-network_load_in_max,host=hostname,interface=eth0       value=[uint],interface="eth0"
+network_load_in_max,host=hostname,interface=eth0       value=[uint],interface_name="eth0"
 # Most loaded device (with maximum transmitting load)
-network_load_out_max,host=hostname,interface=eth0      value=[uint],interface="eth0"
+network_load_out_max,host=hostname,interface=eth0      value=[uint],interface_name="eth0"
 
 #### Monitor’s own metrics ####
 # Monitor runtime, seconds

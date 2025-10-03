@@ -391,14 +391,23 @@ func loadConfig(configFile string, time time.Time) {
 
 	// InfluxDB settings
 	if config.Influx.Enabled {
+		// InfluxDB version
+		if config.Influx.Version < 2 {
+			config.Influx.Version = 2
+		}
+		if config.Influx.Version > 3 {
+			config.Influx.Version = 3
+		}
+
+		// Normalize precision
 		switch config.Influx.Precision {
-		case "", "s", "sec":
+		case "", "s", "sec", "second", "seconds":
 			config.Influx.Precision = "s"
-		case "m", "ms":
+		case "m", "ms", "msec", "milli", "millis", "millisec", "millisecond", "milliseconds":
 			config.Influx.Precision = "ms"
-		case "u", "us", "µ", "µs":
+		case "u", "µ", "us", "µs", "usec", "µsec", "micro", "micros", "microsec", "microsecond", "microseconds":
 			config.Influx.Precision = "us"
-		case "n", "ns":
+		case "n", "ns", "nsec", "nano", "nanos", "nanosec", "nanosecond", "nanoseconds":
 			config.Influx.Precision = "ns"
 		default:
 			println("Invalid InfluxDB precision: " + config.Influx.Precision)
@@ -540,7 +549,7 @@ func collectCpu() {
 	//        user  nice  system    idle  ioWait  irq   softIrq  steal  guest  guest_nice
 	// cpu  151882  1102   40189  891653    2676    0      1368      0      0           0
 
-	for _, line := range strings.Split(string(procStatContents), "\n") {
+	for line := range strings.SplitSeq(string(procStatContents), "\n") {
 		items := strings.Fields(line)
 
 		len := len(items)
@@ -644,14 +653,14 @@ func collectMemory() {
 	var swapFree uint64 = 0
 	var swapCached uint64 = 0
 
-	for _, line := range strings.Split(string(contents), "\n") {
+	for line := range strings.SplitSeq(string(contents), "\n") {
 		items := strings.Fields(line)
 		//println(items)
 		if len(items) != 3 {
 			continue
 		}
 
-		var multiplier uint64 = 1
+		var multiplier uint64
 		switch strings.ToLower(items[2]) {
 		case "kb", "kib":
 			multiplier = 1024
@@ -742,7 +751,7 @@ func collectDisk() {
 		Exit(StatusGeneralError, err)
 	}
 
-	for _, line := range strings.Split(string(stdout), "\n") {
+	for line := range strings.SplitSeq(string(stdout), "\n") {
 		parts := strings.Fields(line)
 		if len(parts) != 6 {
 			continue
@@ -770,7 +779,7 @@ func collectDisk() {
 		total, _ := strconv.ParseUint(parts[1], 10, 64)
 		used, _ := strconv.ParseUint(parts[2], 10, 64)
 		available, _ := strconv.ParseUint(parts[3], 10, 64)
-		usage := 100.0 * float64(used) / float64(total)
+		usage := 100.0 * float64(used) / (float64(used) + float64(available))
 
 		addMetricUint("disk_total", 1024*total, tags)
 		addMetricUint("disk_used", 1024*used, tags)
@@ -788,10 +797,10 @@ func collectIo() {
 	}
 	all := len(config.Io.Devices) == 0
 
-	var maxUsage float64 = 0
-	var maxUsageDevice string = ""
+	maxUsage := 0.0
+	maxUsageDevice := ""
 
-	for _, line := range strings.Split(string(contents), "\n") {
+	for line := range strings.SplitSeq(string(contents), "\n") {
 		parts := strings.Fields(line)
 		if len(parts) < 14 {
 			continue
@@ -812,7 +821,7 @@ func collectIo() {
 		}
 
 		// Skip devices with all "zeroes", nothing to calculate
-		var allZeroes bool = true
+		allZeroes := true
 		for index, part := range parts {
 			if index < 3 {
 				continue
@@ -845,7 +854,6 @@ func collectIo() {
 		addMetricUint("io_current_ops", iosCurrent, tags)
 
 		if last, exists := ioDevices[device]; exists {
-			//println(last)
 
 			// If previous values for this disk are known, calculate IO speed and usage
 			timeDiff := time.Sub(last.Time).Abs().Seconds()
@@ -906,7 +914,7 @@ func collectIo() {
 			"io_usage_max",
 			[]influx.Field{
 				{Name: "value", Type: influx.TypeFloat, FloatValue: maxUsage},
-				{Name: "device", Type: influx.TypeString, StringValue: maxUsageDevice},
+				{Name: "device_name", Type: influx.TypeString, StringValue: maxUsageDevice},
 			},
 			map[string]string{"device": maxUsageDevice},
 			METRICS_DESCRIPTIONS["io_usage_max"],
@@ -924,9 +932,9 @@ func collectNetwork() {
 	all := len(config.Network.Interfaces) == 0
 
 	var maxLoadIn uint64 = 0
-	var maxLoadInInterface string = ""
+	var maxLoadInInterface = ""
 	var maxLoadOut uint64 = 0
-	var maxLoadOutInterface string = ""
+	var maxLoadOutInterface = ""
 
 	// 0            1       2    3    4    5     6          7         8        9      10   11   12   13    14      15         16
 	// Inter-|  Receive                                                |  Transmit
@@ -935,7 +943,7 @@ func collectNetwork() {
 	// eth0:  1215645    2751    0    0    0     0          0         0  1782404    4324    0    0    0   427       0          0
 	// ppp0:  1622270    5552    1    0    0     0          0         0   354130    5669    0    0    0     0       0          0
 
-	for _, line := range strings.Split(string(contents), "\n") {
+	for line := range strings.SplitSeq(string(contents), "\n") {
 		items := strings.Fields(line)
 		if len(items) != 17 {
 			continue
@@ -966,11 +974,17 @@ func collectNetwork() {
 
 		if interfaceInfo, exists := interfaces[interfaceName]; exists {
 			// Load (bits per second)
-			inDiff := math.Abs(float64(inBytes) - float64(interfaceInfo.ReceivedBytes))
-			outDiff := math.Abs(float64(outBytes) - float64(interfaceInfo.TransmittedBytes))
+			inDiff := inBytes
+			if inBytes > interfaceInfo.ReceivedBytes {
+				inDiff -= interfaceInfo.ReceivedBytes
+			}
+			outDiff := outBytes
+			if outBytes > interfaceInfo.TransmittedBytes {
+				outDiff -= interfaceInfo.TransmittedBytes
+			}
 			seconds := time.Sub(interfaceInfo.Time).Abs().Seconds()
-			inLoad := uint64(math.Round(8 * inDiff / seconds))
-			outLoad := uint64(math.Round(8 * outDiff / seconds))
+			inLoad := uint64(math.Round(8 * float64(inDiff) / seconds))
+			outLoad := uint64(math.Round(8 * float64(outDiff) / seconds))
 
 			addMetricUint("network_load_in", inLoad, tags)
 			addMetricUint("network_load_out", outLoad, tags)
@@ -998,7 +1012,7 @@ func collectNetwork() {
 			"network_load_in_max",
 			[]influx.Field{
 				{Name: "value", Type: influx.TypeUint, UintValue: maxLoadIn},
-				{Name: "interface", Type: influx.TypeString, StringValue: maxLoadInInterface},
+				{Name: "interface_name", Type: influx.TypeString, StringValue: maxLoadInInterface},
 			},
 			map[string]string{"interface": maxLoadInInterface},
 			METRICS_DESCRIPTIONS["network_load_in_max"],
@@ -1009,7 +1023,7 @@ func collectNetwork() {
 			"network_load_out_max",
 			[]influx.Field{
 				{Name: "value", Type: influx.TypeUint, UintValue: maxLoadOut},
-				{Name: "interface", Type: influx.TypeString, StringValue: maxLoadOutInterface},
+				{Name: "interface_name", Type: influx.TypeString, StringValue: maxLoadOutInterface},
 			},
 			map[string]string{"interface": maxLoadOutInterface},
 			METRICS_DESCRIPTIONS["network_load_out_max"],
@@ -1082,7 +1096,7 @@ func validateRunning() {
 	//cmd := exec.Command("ps", "-eo", "user,pid,args")
 	//stdout, _ := cmd.Output()
 	//println("stdout:", string(stdout))
-	//for _, line := range strings.Split(string(stdout), "\n") {
+	//for line := range strings.SplitSeq(string(stdout), "\n") {
 	//	slice := strings.Fields(line)
 	//	println("`" + strings.Join(slice, "`, `") + "`")
 	//}

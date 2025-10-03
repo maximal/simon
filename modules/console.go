@@ -7,7 +7,7 @@ import (
 )
 
 func PrintColorful(text string) {
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		if strings.HasPrefix(strings.TrimSpace(line), "#") {
 			PrintLnComment(line)
 		} else {

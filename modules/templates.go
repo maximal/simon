@@ -107,11 +107,11 @@ StartLimitBurst=4
 [Service]
 #ExecStart=/path/to/simon/simon -c /path/to/simon/config.yml -i 15
 ExecStart=%s -c '%s' -i 15
-ExecReload=/bin/kill -SIGHUP "$MAINPID"
+ExecReload=/bin/kill -HUP "$MAINPID"
 Restart=on-failure
 RestartSec=1
-# Do not restart on the following exit codes (won’t be successful):
-RestartPreventExitStatus=3 4 5 6
+# Do not restart on the following known exit codes (won’t be successful):
+RestartPreventExitStatus=10 11 12 13
 # 1 (fatal), 2 (panic) — unknown codes, service should be restarted
 
 # Hardening
@@ -183,7 +183,7 @@ disk_total,host=hostname,disk=/dev/vda1,mount=/        value=[uint]
 disk_used,host=hostname,disk=/dev/vda1,mount=/         value=[uint]
 # Disk available, bytes
 disk_available,host=hostname,disk=/dev/vda1,mount=/    value=[uint]
-# Disk usage; 100%% * disk_used / disk_total
+# Disk usage; 100%% * disk_used / (disk_used + disk_available)
 disk_usage,host=hostname,disk=/dev/vda1,mount=/        value=[float]
 
 #### IO metrics, for each monitored device ####
@@ -205,7 +205,7 @@ io_read_usage,host=hostname,device=vda1                value=[float]
 io_usage,host=hostname,device=vda1                     value=[float]
 
 # Most used I/O device (with maximum I/O usage)
-io_usage_max,host=hostname,device=vda                  value=[float],device="vda"
+io_usage_max,host=hostname,device=vda                  value=[float],device_name="vda"
 
 #### Network metrics, for each monitored interface ####
 # Received traffic, bytes
@@ -218,9 +218,9 @@ network_load_in,host=hostname,interface=eth0           value=[uint]
 network_load_out,host=hostname,interface=eth0          value=[uint]
 
 # Most loaded device (with maximum receiving load)
-network_load_in_max,host=hostname,interface=eth0       value=[uint],interface="eth0"
+network_load_in_max,host=hostname,interface=eth0       value=[uint],interface_name="eth0"
 # Most loaded device (with maximum transmitting load)
-network_load_out_max,host=hostname,interface=eth0      value=[uint],interface="eth0"
+network_load_out_max,host=hostname,interface=eth0      value=[uint],interface_name="eth0"
 
 #### Monitor’s own metrics ####
 # Monitor runtime, seconds
@@ -262,7 +262,7 @@ var METRICS_DESCRIPTIONS map[string]string = map[string]string{
 	"disk_total":     "Disk total, bytes",
 	"disk_used":      "Disk used, bytes",
 	"disk_available": "Disk available, bytes",
-	"disk_usage":     "Disk usage; 100% * disk_used / disk_total",
+	"disk_usage":     "Disk usage; 100% * disk_used / (disk_used + disk_available)",
 
 	// #### IO metrics, for each monitored device ####
 	"io_current_ops":     "Number of I/O operations currently in progress",

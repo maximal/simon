@@ -12,17 +12,18 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 )
 
 type InfluxConfig struct {
 	Enabled   bool
+	Version   uint8
 	Host      string
 	Token     string
 	Org       string
 	Bucket    string
+	Database  string
 	Precision string
 	Tags      map[string]string
 }
@@ -155,30 +156,16 @@ func GetMetricsText() string {
 	lines := []string{"## metrics start: " + strconv.FormatUint(count, 10)}
 
 	for _, metric := range metrics {
-		// Sort tags for better performance on InfluxDB side:
-		// https://docs.influxdata.com/influxdb/v2/write-data/best-practices/optimize-writes/#sort-tags-by-key
-		tagKeys := []string{}
-		for key := range commonTags {
-			if _, exists := metric.Tags[key]; exists {
-				continue
-			}
-			tagKeys = append(tagKeys, key)
+		tags := []string{escapeMetricName(metric.Name)}
+		for key, value := range commonTags {
+			tags = append(tags, escapeKey(key)+"="+escapeTagValue(value))
 		}
-		for key := range metric.Tags {
-			tagKeys = append(tagKeys, key)
-		}
-		sort.Strings(tagKeys)
-		var tags []string = []string{escapeMetricName(metric.Name)}
-		for _, key := range tagKeys {
-			if _, exists := metric.Tags[key]; exists {
-				tags = append(tags, escapeKey(key)+"="+escapeTagValue(metric.Tags[key]))
-			} else {
-				tags = append(tags, escapeKey(key)+"="+escapeTagValue(commonTags[key]))
-			}
+		for key, value := range metric.Tags {
+			tags = append(tags, escapeKey(key)+"="+escapeTagValue(value))
 		}
 
 		// Format values to match field types
-		var values []string = []string{}
+		values := []string{}
 		for _, field := range metric.Fields {
 			var escaped string
 			switch field.Type {
@@ -272,7 +259,13 @@ func SendMetrics(config InfluxConfig) bool {
 }
 
 func SendText(text string, config InfluxConfig) bool {
+	if config.Version == 2 {
+		return SendText2(text, config)
+	}
+	return SendText3(text, config)
+}
 
+func SendText2(text string, config InfluxConfig) bool {
 	var host string
 	if strings.HasPrefix(config.Host, "https://") || strings.HasPrefix(config.Host, "http://") {
 		host = config.Host
@@ -306,6 +299,65 @@ func SendText(text string, config InfluxConfig) bool {
 	defer response.Body.Close()
 
 	if response.StatusCode < 200 || response.StatusCode > 299 {
+		println("HTTP", response.Status)
+		//println("Response headers:", response.Header)
+		body, _ := io.ReadAll(response.Body)
+		println("Response Body:", string(body))
+		return false
+	}
+
+	return true
+}
+
+func SendText3(text string, config InfluxConfig) bool {
+	var host string
+	if strings.HasPrefix(config.Host, "https://") || strings.HasPrefix(config.Host, "http://") {
+		host = config.Host
+	} else {
+		host = "http://" + config.Host
+	}
+
+	params := url.Values{}
+	if config.Database != "" {
+		params.Add("db", config.Database)
+	} else {
+		params.Add("db", config.Bucket)
+	}
+
+	switch config.Precision {
+	case "s":
+		params.Add("precision", "second")
+	case "ms":
+		params.Add("precision", "millisecond")
+	case "us":
+		params.Add("precision", "microsecond")
+	case "ns":
+		params.Add("precision", "nanosecond")
+	default:
+		params.Add("precision", "auto")
+	}
+
+	request, err := http.NewRequest(
+		"POST",
+		host+"/api/v3/write_lp?"+params.Encode(),
+		bytes.NewBuffer([]byte(text)),
+	)
+	if err != nil {
+		println(err)
+		return false
+	}
+	request.Header.Set("Authorization", "Bearer "+config.Token)
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		//panic(err)
+		println(err)
+		return false
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != 204 {
 		println("HTTP", response.Status)
 		//println("Response headers:", response.Header)
 		body, _ := io.ReadAll(response.Body)

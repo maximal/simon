@@ -10,10 +10,10 @@ const (
 	StatusFatal ExitStatus = 1
 	StatusPanic ExitStatus = 2
 	// Known errors, restart won’t be successful
-	StatusGeneralError        ExitStatus = 3
-	StatusInvalidConfig       ExitStatus = 4
-	StatusUnsupportedPlatform ExitStatus = 5
-	StatusAlreadyRunning      ExitStatus = 6
+	StatusGeneralError        ExitStatus = 10
+	StatusInvalidConfig       ExitStatus = 11
+	StatusUnsupportedPlatform ExitStatus = 12
+	StatusAlreadyRunning      ExitStatus = 13
 	// ... ... ...
 )
 
