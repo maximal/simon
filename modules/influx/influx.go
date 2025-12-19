@@ -25,6 +25,7 @@ type InfluxConfig struct {
 	Bucket    string
 	Database  string
 	Precision string
+	Comments  bool
 	Tags      map[string]string
 }
 
@@ -34,8 +35,8 @@ const (
 	TypeFloat  FieldType = 1
 	TypeInt    FieldType = 2
 	TypeUint   FieldType = 3
-	TypeString FieldType = 4
-	TypeBool   FieldType = 5
+	TypeBool   FieldType = 4
+	TypeString FieldType = 5
 )
 
 type Field struct {
@@ -45,8 +46,8 @@ type Field struct {
 	FloatValue  float64
 	IntValue    int64
 	UintValue   uint64
-	StringValue string
 	BoolValue   bool
+	StringValue string
 }
 
 type Metric struct {
@@ -88,17 +89,17 @@ func AddValueMetric(name string, value any, tags map[string]string, comment stri
 	switch value := value.(type) {
 	default:
 		// fmt.Printf("unexpected type %T\n", t) // %T prints whatever type t has
-		panic("Unexpected type; must be one of: float64, int64, uint64, string, bool")
+		panic("Unexpected type; must be one of: float64, int64, uint64, bool, string")
 	case float64:
 		AddFloatMetric(name, value, tags, comment)
 	case int64:
 		AddIntMetric(name, value, tags, comment)
 	case uint64:
 		AddUintMetric(name, value, tags, comment)
-	case string:
-		AddStringMetric(name, value, tags, comment)
 	case bool:
 		AddBoolMetric(name, value, tags, comment)
+	case string:
+		AddStringMetric(name, value, tags, comment)
 	}
 }
 
@@ -129,15 +130,6 @@ func AddUintMetric(name string, value uint64, tags map[string]string, comment st
 	})
 }
 
-func AddStringMetric(name string, value string, tags map[string]string, comment string) {
-	metrics = append(metrics, Metric{
-		Name:    name,
-		Fields:  []Field{{Name: "value", Type: TypeString, StringValue: value}},
-		Tags:    tags,
-		Comment: comment,
-	})
-}
-
 func AddBoolMetric(name string, value bool, tags map[string]string, comment string) {
 	metrics = append(metrics, Metric{
 		Name:    name,
@@ -147,13 +139,25 @@ func AddBoolMetric(name string, value bool, tags map[string]string, comment stri
 	})
 }
 
-func GetMetricsText() string {
+func AddStringMetric(name string, value string, tags map[string]string, comment string) {
+	metrics = append(metrics, Metric{
+		Name:    name,
+		Fields:  []Field{{Name: "value", Type: TypeString, StringValue: value}},
+		Tags:    tags,
+		Comment: comment,
+	})
+}
+
+func GetMetricsText(withComments bool) string {
 	count := GetMetricsCount()
 	if count == 0 {
 		return ""
 	}
 
-	lines := []string{"## metrics start: " + strconv.FormatUint(count, 10)}
+	lines := make([]string, 0, count)
+	if withComments {
+		lines = append(lines, "## metrics start: "+strconv.FormatUint(count, 10))
+	}
 
 	for _, metric := range metrics {
 		tags := []string{escapeMetricName(metric.Name)}
@@ -175,10 +179,10 @@ func GetMetricsText() string {
 				escaped = strconv.FormatInt(field.IntValue, 10) + "i"
 			case TypeUint:
 				escaped = strconv.FormatUint(field.UintValue, 10) + "u"
-			case TypeString:
-				escaped = "\"" + escapeStringFieldValue(field.StringValue) + "\""
 			case TypeBool:
 				escaped = strconv.FormatBool(field.BoolValue)
+			case TypeString:
+				escaped = "\"" + escapeStringFieldValue(field.StringValue) + "\""
 			}
 			values = append(values, escapeKey(field.Name)+"="+escaped)
 		}
@@ -194,7 +198,7 @@ func GetMetricsText() string {
 		}
 
 		// Measurement comment
-		if metric.Comment != "" {
+		if withComments && metric.Comment != "" {
 			lines = append(lines, "# "+strings.ReplaceAll(metric.Comment, "\n", " "))
 		}
 
@@ -202,7 +206,10 @@ func GetMetricsText() string {
 		lines = append(lines, strings.Join(parts, "    "))
 	}
 
-	lines = append(lines, "## metrics end")
+	if withComments {
+		lines = append(lines, "## metrics end")
+	}
+
 	return strings.Join(lines, "\n")
 }
 
@@ -255,7 +262,7 @@ func escapeStringFieldValue(value string) string {
 }
 
 func SendMetrics(config InfluxConfig) bool {
-	return SendText(GetMetricsText(), config)
+	return SendText(GetMetricsText(config.Comments), config)
 }
 
 func SendText(text string, config InfluxConfig) bool {
@@ -278,11 +285,8 @@ func SendText2(text string, config InfluxConfig) bool {
 	params.Add("bucket", config.Bucket)
 	params.Add("precision", config.Precision)
 
-	request, err := http.NewRequest(
-		"POST",
-		host+"/api/v2/write?"+params.Encode(),
-		bytes.NewBuffer([]byte(text)),
-	)
+	url := host + "/api/v2/write?" + params.Encode()
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(text)))
 	if err != nil {
 		println(err)
 		return false
@@ -300,6 +304,7 @@ func SendText2(text string, config InfluxConfig) bool {
 
 	if response.StatusCode < 200 || response.StatusCode > 299 {
 		println("HTTP", response.Status)
+		println("Request: POST", url)
 		//println("Response headers:", response.Header)
 		body, _ := io.ReadAll(response.Body)
 		println("Response Body:", string(body))
@@ -337,11 +342,8 @@ func SendText3(text string, config InfluxConfig) bool {
 		params.Add("precision", "auto")
 	}
 
-	request, err := http.NewRequest(
-		"POST",
-		host+"/api/v3/write_lp?"+params.Encode(),
-		bytes.NewBuffer([]byte(text)),
-	)
+	url := host + "/api/v3/write_lp?" + params.Encode()
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(text)))
 	if err != nil {
 		println(err)
 		return false
@@ -359,6 +361,7 @@ func SendText3(text string, config InfluxConfig) bool {
 
 	if response.StatusCode != 204 {
 		println("HTTP", response.Status)
+		println("Request: POST", url)
 		//println("Response headers:", response.Header)
 		body, _ := io.ReadAll(response.Body)
 		println("Response Body:", string(body))

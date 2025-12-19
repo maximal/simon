@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"maximal/simon/modules/influx"
 	"net/http"
 	"os"
 	"os/exec"
@@ -18,37 +17,38 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+	"maximal/simon/modules/influx"
 )
 
 // Note: struct fields must be public in order for unmarshal to
 // correctly populate the data.
 type Config struct {
 	Hostname string        `yaml:"hostname" default:""`
-	Format   MetricsFormat `yaml:"format" default:"influx"`
-	Mode     WorkingMode   `yaml:"mode" default:"push"`
+	Format   MetricsFormat `yaml:"format"   default:"influx"`
+	Mode     WorkingMode   `yaml:"mode"     default:"push"`
 	Server   struct {
 		Port          uint16 `yaml:"port" default:"8000"`
 		Host          string `yaml:"host" default:""`
 		Authorization string `yaml:"authorization" default:""`
 	}
 	Influx influx.InfluxConfig
-	Print  bool `yaml:"print" default:"false"`
-	Uptime bool `yaml:"uptime" default:"true"`
-	Cpu    bool `yaml:"cpu" default:"true"`
-	Memory bool `yaml:"memory" default:"true"`
+	Print  bool `yaml:"print"    default:"false"`
+	Uptime bool `yaml:"uptime"   default:"true"`
+	Cpu    bool `yaml:"cpu"      default:"true"`
+	Memory bool `yaml:"memory"   default:"true"`
 	Disk   struct {
 		Enabled bool     `yaml:"enabled" default:"true"`
-		Mounts  []string `yaml:"mounts" default:"nil"`
+		Mounts  []string `yaml:"mounts"  default:"nil"`
 	}
 	Io struct {
 		Enabled bool     `yaml:"enabled" default:"true"`
 		Devices []string `yaml:"devices" default:"nil"`
 	}
 	Network struct {
-		Enabled    bool     `yaml:"enabled" default:"true"`
+		Enabled    bool     `yaml:"enabled"    default:"true"`
 		Interfaces []string `yaml:"interfaces" default:"nil"`
 	}
-	Monitor bool `yaml:"monitor" default:"true"`
+	Monitor bool `yaml:"monitor"  default:"true"`
 }
 
 type WorkingMode string
@@ -298,7 +298,7 @@ func workServerMode(configFile string, start time.Time) {
 	// Run the server
 	port := config.Server.Port
 	println(fmt.Sprintf("# Listening on %s:%d...", config.Server.Host, port))
-	var address string = config.Server.Host
+	address := config.Server.Host
 	if address == "" {
 		address = "0.0.0.0"
 	}
@@ -370,7 +370,9 @@ func loadConfig(configFile string, time time.Time) {
 		config.Mode = Server
 	default:
 		println("Invalid working mode: `" + config.Mode + "`")
-		println("Valid modes: `push` (send metrics, default), `server` (print metrics on HTTP requests)")
+		println(
+			"Valid modes: `push` (send metrics, default), `server` (print metrics on HTTP requests)",
+		)
 		Exit(StatusInvalidConfig)
 	}
 
@@ -405,7 +407,17 @@ func loadConfig(configFile string, time time.Time) {
 			config.Influx.Precision = "s"
 		case "m", "ms", "msec", "milli", "millis", "millisec", "millisecond", "milliseconds":
 			config.Influx.Precision = "ms"
-		case "u", "µ", "us", "µs", "usec", "µsec", "micro", "micros", "microsec", "microsecond", "microseconds":
+		case "u",
+			"µ",
+			"us",
+			"µs",
+			"usec",
+			"µsec",
+			"micro",
+			"micros",
+			"microsec",
+			"microsecond",
+			"microseconds":
 			config.Influx.Precision = "us"
 		case "n", "ns", "nsec", "nano", "nanos", "nanosec", "nanosecond", "nanoseconds":
 			config.Influx.Precision = "ns"
@@ -1170,6 +1182,9 @@ func addMetricUint(name string, value uint64, tags ...map[string]string) {
 }
 
 func getMetricsText(index uint64) string {
+	if !config.Influx.Comments {
+		return influx.GetMetricsText(false)
+	}
 	prepend := []string{
 		"####",
 		"# " + APP_NAME + " metrics",
@@ -1181,7 +1196,7 @@ func getMetricsText(index uint64) string {
 		"# @link " + INFLUX_PROTOCOL_URL,
 		"####",
 	}
-	return strings.Join(prepend, "\n") + "\n" + influx.GetMetricsText()
+	return strings.Join(prepend, "\n") + "\n" + influx.GetMetricsText(true)
 }
 
 func fieldRequiredForInflux(field string) string {

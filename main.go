@@ -7,8 +7,9 @@
 package main
 
 import (
-	"maximal/simon/cmd"
 	"runtime"
+
+	"maximal/simon/cmd"
 )
 
 func init() {

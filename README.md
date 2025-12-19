@@ -34,12 +34,12 @@ cd simon
 
 Build the executable for production usage:
 ```shell
-go build -ldflags "-s -w" -trimpath .
+go build -ldflags "-s -w" -trimpath
 ```
 
 Build for specific platform (if you need to run SiMon on a different machine):
 ```shell
-GOARCH=amd64 GOOS=linux go build -ldflags "-s -w" -trimpath .
+GOARCH=amd64 GOOS=linux go build -ldflags "-s -w" -trimpath
 ```
 
 Make test run:
@@ -178,6 +178,8 @@ influx:
   # It is recommended not to use `ms`, `us`, or `ns`
   # if the monitoring interval is greater than `1`
   precision: s
+  # Whether to add comments to the sent metrics; disabled by default, set true to enable
+  #comments: true
   # Additional tags to be added to every measurement; key:value pairs
   tags:
     custom_tag: custom_tag_value

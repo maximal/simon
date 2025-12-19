@@ -47,6 +47,8 @@ influx:
   # It is recommended not to use `ms`, `μs`, or `ns`
   # if the monitoring interval is greater than `1`
   precision: s
+  # Whether to add comments to the sent metrics; disabled by default, set true to enable
+  #comments: true
   # Additional tags to be added to every measurement; key:value pairs
   tags:
     #custom1: value1

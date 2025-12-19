@@ -56,7 +56,7 @@ func formatBytes(bytes uint64) string {
 		return fmt.Sprintf("%d %s", bytes, BYTE_UNITS_IEC[0])
 	}
 	var index uint8 = 0
-	var number float64 = float64(bytes)
+	var number = float64(bytes)
 	for number > 998 && index < 10 {
 		number /= 1024.0
 		index++

@@ -5,7 +5,7 @@ const APP_VERSION string = "1.0.0+source"
 const APP_COMMAND string = "simon"
 const REPOSITORY_URL string = "https://github.com/maximal/simon"
 const REPOSITORY_PHP_URL string = "https://github.com/maximal/simon-php"
-const INFLUX_PROTOCOL_URL string = "https://docs.influxdata.com/influxdb/v2/reference/syntax/line-protocol/"
+const INFLUX_PROTOCOL_URL string = "https://docs.influxdata.com/influxdb3/core/reference/line-protocol/"
 
 const CONFIG_TEMPLATE string = `####
 # %s config.
@@ -40,6 +40,8 @@ server:
 influx:
   # Whether to send data to Influx; disabled by default, console output only
   #enabled: true
+  # InfluxDB version: 2 or 3
+  version: 3
   # Influx host name, required if Influx enabled
   # HTTP installation example, with port: influx.host.org:8086
   # HTTPS installation example: https://influx.host.org
@@ -54,6 +56,8 @@ influx:
   # It is recommended not to use ` + "`ms`, " + "`μs`, or " + "`ns`" + `
   # if the monitoring interval is greater than ` + "`1`" + `
   precision: s
+  # Whether to add comments to the sent metrics; disabled by default, set true to enable
+  #comments: true
   # Additional tags to be added to every measurement; key:value pairs
   tags:
     #custom1: value1
