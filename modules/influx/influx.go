@@ -179,6 +179,8 @@ func GetMetricsText(withComments bool) string {
 				escaped = strconv.FormatInt(field.IntValue, 10) + "i"
 			case TypeUint:
 				escaped = strconv.FormatUint(field.UintValue, 10) + "u"
+				// QuestDB crutch (compatibility mode)
+				//escaped = strconv.FormatUint(field.UintValue, 10) + "i"
 			case TypeBool:
 				escaped = strconv.FormatBool(field.BoolValue)
 			case TypeString:
@@ -204,6 +206,8 @@ func GetMetricsText(withComments bool) string {
 
 		// Measurement line: name, tags, fields/values
 		lines = append(lines, strings.Join(parts, "    "))
+		// QuestDB crutch (compatibility mode)
+		//lines = append(lines, strings.Join(parts, " "))
 	}
 
 	if withComments {
