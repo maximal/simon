@@ -1,11 +1,13 @@
 package simon
 
-const APP_NAME string = "SiMon"
-const APP_VERSION string = "1.0.0+source"
-const APP_COMMAND string = "simon"
-const REPOSITORY_URL string = "https://github.com/maximal/simon"
-const REPOSITORY_PHP_URL string = "https://github.com/maximal/simon-php"
-const INFLUX_PROTOCOL_URL string = "https://docs.influxdata.com/influxdb3/core/reference/line-protocol/"
+const (
+	APP_NAME            string = "SiMon"
+	APP_VERSION         string = "1.0.0+source"
+	APP_COMMAND         string = "simon"
+	REPOSITORY_URL      string = "https://github.com/maximal/simon"
+	REPOSITORY_PHP_URL  string = "https://github.com/maximal/simon-php"
+	INFLUX_PROTOCOL_URL string = "https://docs.influxdata.com/influxdb3/core/reference/line-protocol/"
+)
 
 const CONFIG_TEMPLATE string = `####
 # %s config.

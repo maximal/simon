@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"fmt"
-	simon "maximal/simon/modules"
 	"os"
 	"os/exec"
 	"os/user"
 
 	"github.com/spf13/cobra"
+
+	simon "maximal/simon/modules"
 )
 
 // `installCmd` represents the `install` command
@@ -50,9 +51,9 @@ var installCmd = &cobra.Command{
 		println(fmt.Sprintf("Installing service for user `%s`...", username))
 		println()
 
-		var executableFile = homeDir + "/.local/bin/simon"
-		var serviceFile = homeDir + "/.local/share/systemd/user/simon.service"
-		var configFile = homeDir + "/.config/simon/config.yml"
+		executableFile := homeDir + "/.local/bin/simon"
+		serviceFile := homeDir + "/.local/share/systemd/user/simon.service"
+		configFile := homeDir + "/.config/simon/config.yml"
 		if root {
 			executableFile = "/usr/local/bin/simon"
 			serviceFile = "/lib/systemd/system/simon.service"
@@ -101,7 +102,15 @@ var installCmd = &cobra.Command{
 		}
 
 		// Install for regular user
-		enableCommand := exec.Command("sudo", "-u", username, "systemctl", "--user", "enable", "simon")
+		enableCommand := exec.Command(
+			"sudo",
+			"-u",
+			username,
+			"systemctl",
+			"--user",
+			"enable",
+			"simon",
+		)
 		println("Enabling user’s service...")
 		simon.PrintLnComment(enableCommand.String())
 		println()
@@ -113,7 +122,15 @@ var installCmd = &cobra.Command{
 
 		println("Service successfully installed.")
 
-		startCommand := exec.Command("sudo", "-u", username, "systemctl", "--user", "start", "simon")
+		startCommand := exec.Command(
+			"sudo",
+			"-u",
+			username,
+			"systemctl",
+			"--user",
+			"start",
+			"simon",
+		)
 		println("Edit the config file: " + configFile)
 		println("And start user service when you are ready:")
 		simon.PrintLnComment("\t" + startCommand.String())

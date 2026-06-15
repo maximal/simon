@@ -2,11 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	simon "maximal/simon/modules"
 	"os"
 	"path"
 
 	"github.com/spf13/cobra"
+
+	simon "maximal/simon/modules"
 )
 
 // `serviceCmd` represents the `service` command

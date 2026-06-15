@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	simon "maximal/simon/modules"
 	"time"
 
 	"github.com/spf13/cobra"
+
+	simon "maximal/simon/modules"
 )
 
 // `metricsCmd` represents the `metrics` command

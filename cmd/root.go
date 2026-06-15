@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	simon "maximal/simon/modules"
-
 	"github.com/spf13/cobra"
+
+	simon "maximal/simon/modules"
 )
 
 // `rootCmd` represents the base command when called without any subcommands
@@ -14,7 +14,7 @@ var rootCmd = &cobra.Command{
 	Long: simon.APP_NAME + ` is a simple Linux system monitor.
 It gathers various performance metrics and prints or sends them to InfluxDB.
 
-Author: MaximAL 2024—2025
+Author: MaximAL 2024—2026
 Website: ` + simon.REPOSITORY_URL + `
 Original PHP version: ` + simon.REPOSITORY_PHP_URL,
 	// Uncomment the following line if your bare application
@@ -56,12 +56,12 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	//rootCmd.PersistentFlags().StringP("config", "c", "simon.yml", "Config file")
-	//rootCmd.PersistentFlags().Float32P("interval", "i", 15.0, "Refresh interval in seconds: 0.1 .. 600")
+	// rootCmd.PersistentFlags().StringP("config", "c", "simon.yml", "Config file")
+	// rootCmd.PersistentFlags().Float32P("interval", "i", 15.0, "Refresh interval in seconds: 0.1 .. 600")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	//rootCmd.Flags().StringP("config", "c", "config.yml", "Config file")
+	// rootCmd.Flags().StringP("config", "c", "config.yml", "Config file")
 	rootCmd.Flags().StringP("config", "c", "simon.yml", "config file")
 	rootCmd.Flags().Float32P("interval", "i", 15.0, "refresh interval in seconds: 0.1 .. 3600")
 }

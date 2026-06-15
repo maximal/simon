@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
 	"maximal/simon/modules/influx"
 )
 

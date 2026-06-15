@@ -1,6 +1,6 @@
 /**
  *
- * Copyright © 2024-2025 MaximAL
+ * Copyright © 2024-2026 MaximAL
  *
  */
 

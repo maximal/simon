@@ -2,13 +2,14 @@ package cmd
 
 import (
 	"fmt"
-	simon "maximal/simon/modules"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
+
+	simon "maximal/simon/modules"
 )
 
 // `configCmd` represents the `config` command
